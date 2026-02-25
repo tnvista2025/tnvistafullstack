@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import mainVideo from "../assets/mainh.mp4";
 
 // ============================================
-// HOME PAGE WITH GOOGLE-STYLE LOGIN & SHAKE ANIMATION
+// HOME PAGE WITH RENDER BACKEND - FIXED 400 ERROR
 // ============================================
 
 const HomePage = () => {
@@ -24,6 +24,9 @@ const HomePage = () => {
   
   const mobileMenuRef = useRef(null);
   const modalRef = useRef(null);
+
+  // ✅ RENDER BACKEND URL
+  const API_URL = 'https://tnvista-backend.onrender.com';
 
   // Check if user is already logged in
   useEffect(() => {
@@ -118,7 +121,7 @@ const HomePage = () => {
   };
 
   // ============================================
-  // HANDLE SUBMIT - WITH SHAKE ANIMATION
+  // HANDLE SUBMIT - FIXED 400 ERROR
   // ============================================
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -130,21 +133,35 @@ const HomePage = () => {
       setSuccessMessage("");
       
       try {
+        // ✅ IMPORTANT: Create data WITHOUT confirmPassword
+        const dataToSend = {
+          email: formData.email,
+          password: formData.password,
+        };
+        
+        // Add name only for signup (Django expects 'name' field)
+        if (!isLogin) {
+          dataToSend.name = formData.name;
+          // Django doesn't need confirmPassword - validation done in React
+        }
+        
         const endpoint = isLogin ? '/api/login/' : '/api/signup/';
-        const url = `http://127.0.0.1:8000/accounts${endpoint}`;
+        const url = `${API_URL}/accounts${endpoint}`;
         
         console.log('📤 Sending to:', url);
+        console.log('📤 Data:', dataToSend);
         
         const response = await fetch(url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData),
+          body: JSON.stringify(dataToSend), // Send clean data
         });
         
         const data = await response.json();
-        console.log('📥 Response:', data);
+        console.log('📥 Response Status:', response.status);
+        console.log('📥 Response Data:', data);
         
         if (response.ok) {
           // Store user data
@@ -152,23 +169,21 @@ const HomePage = () => {
           localStorage.setItem('user', JSON.stringify(data.user));
           setUser(data.user);
           
-          // Show success message in modal
           setSuccessMessage(isLogin ? '✅ Login successful!' : '✅ Account created successfully!');
           
-          // Close modal after 1.5 seconds and redirect
           setTimeout(() => {
             closeLoginModal();
             navigate('/');
           }, 1500);
           
         } else {
-          // Show validation errors in the form
+          // Show validation errors from Django
+          console.log('❌ Error Response:', data);
           setErrors(data);
           
           // Trigger shake animation for wrong password
-          if (data.error === 'Invalid email or password') {
+          if (data.error === 'Invalid email or password' || data.non_field_errors) {
             setFormData(prev => ({ ...prev, password: '' }));
-            // Add shake class to password field
             const passwordInput = document.querySelector('input[name="password"]');
             if (passwordInput) {
               passwordInput.classList.add('animate-shake');
@@ -181,7 +196,7 @@ const HomePage = () => {
       } catch (error) {
         console.error('❌ Connection error:', error);
         setErrors({ 
-          general: 'Cannot connect to server. Make sure Django is running on port 8000.' 
+          general: 'Cannot connect to server. Make sure backend is running on Render.' 
         });
       } finally {
         setIsLoading(false);
@@ -572,7 +587,7 @@ Brihadeeswarar Temple in Thanjavur was built by Raja Raja Chola I in 1010 CE. It
         </div>
       </header>
 
-      {/* ========== GOOGLE-STYLE LOGIN MODAL WITH SHAKE ANIMATION ========== */}
+      {/* ========== GOOGLE-STYLE LOGIN MODAL ========== */}
       {isLoginModalOpen && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center px-4">
           <div className="absolute inset-0 bg-black/60 backdrop-blur-sm"></div>
@@ -1023,7 +1038,6 @@ Brihadeeswarar Temple in Thanjavur was built by Raja Raja Chola I in 1010 CE. It
           animation-delay: 0.15s;
         }
         
-        /* Shake animation for wrong password */
         @keyframes shake {
           0%, 100% { transform: translateX(0); }
           10%, 30%, 50%, 70%, 90% { transform: translateX(-5px); }
@@ -1032,31 +1046,6 @@ Brihadeeswarar Temple in Thanjavur was built by Raja Raja Chola I in 1010 CE. It
         
         .animate-shake {
           animation: shake 0.5s ease-in-out;
-        }
-        
-        /* Red border for error fields */
-        .input-error {
-          border-color: #ef4444 !important;
-          background-color: #fef2f2 !important;
-        }
-        
-        .input-error:focus {
-          ring-color: #ef4444 !important;
-        }
-        
-        /* Error message styling */
-        .error-text {
-          color: #ef4444;
-          font-size: 0.75rem;
-          margin-top: 0.25rem;
-          display: flex;
-          align-items: center;
-          gap: 0.25rem;
-        }
-        
-        .error-text svg {
-          width: 14px;
-          height: 14px;
         }
       `}</style>
     </div>
